@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nemesis Rising: Skylight City</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter and Orbitron -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Apply Inter font family to body for general text */
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            /* Removed Tailwind's overflow-hidden from body tag, now managing overflow-x here */
+            overflow-x: hidden; /* Prevent horizontal scroll due to background */
+            overflow-y: auto; /* Allow vertical scrolling if content overflows */
+        }
+
+        /* Specific styling for Orbitron font for headings/titles */
+        .font-orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        /* Neon glow effect for titles */
+        .drop-shadow-neon {
+            text-shadow:
+                0 0 5px #0ff,
+                0 0 10px #0ff,
+                0 0 20px #0ff,
+                0 0 40px #f0f,
+                0 0 80px #f0f;
+        }
+
+        /* Custom scrollbar for better aesthetics */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 10px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #8A2BE2, #4B0082); /* Purple gradient */
+            border-radius: 10px;
+        }
+
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #9932CC, #6A0DAD); /* Darker purple */
+        }
+
+        /* Neon shadow for interactive elements */
+        .shadow-neon {
+            box-shadow:
+                0 0 5px rgba(138, 43, 226, 0.5), /* BlueViolet */
+                0 0 10px rgba(75, 0, 130, 0.5), /* Indigo */
+                0 0 15px rgba(147, 112, 219, 0.5); /* MediumPurple */
+        }
+
+        /* Basic keyframes for pulse effect */
+        @keyframes pulse-once {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+            100% { transform: scale(1); }
+        }
+
+        .animate-pulse-once {
+            animation: pulse-once 1.5s ease-out;
+        }
+
+        /* Keyframes for grid background pulse */
+        @keyframes pulse-grid {
+            0% { opacity: 0.1; }
+            50% { opacity: 0.2; }
+            100% { opacity: 0.1; }
+        }
+
+        .animate-pulse-grid {
+            animation: pulse-grid 5s infinite alternate ease-in-out;
+        }
+
+        /* Keyframes for fade-in effect */
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 1s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-950 text-white font-inter relative">
+    <!-- Removed 'overflow-hidden' from body tag -->
+
+    <!-- Background neon grid effect -->
+    <div class="absolute inset-0 z-0 opacity-10 pointer-events-none">
+        <div class="grid grid-cols-10 md:grid-cols-20 gap-px h-full w-full">
+            <!-- Grid cells, dynamically filled by JS for animation delay -->
+        </div>
+    </div>
+
+    <!-- Main content area -->
+    <div id="app-container" class="relative z-10 flex flex-col items-center justify-center min-h-screen p-4">
+        <h1 class="text-5xl md:text-6xl font-orbitron font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-600 drop-shadow-neon mb-8 text-center uppercase tracking-wider">
+            NEMESIS RISING: SKYLIGHT CITY
+        </h1>
+
+        <div id="game-content" class="w-full flex flex-col items-center">
+            <!-- Content will be injected here by JavaScript (Character Creator or Game Screen) -->
+        </div>
+    </div>
+
+    <!-- Modals will be dynamically added/removed here by JavaScript -->
+    <div id="modal-container"></div>
+
+    <script>
+        // Global game state variables
+        let character = null;
+        let gameHistory = [];
+        let importantLocations = [];
+        let importantPeople = [];
+        let importantEvents = [];
+        let currentScreen = 'characterCreator'; // 'characterCreator', 'game'
+
+        // Modals state (managed by direct DOM manipulation)
+        let showLocationsModal = false;
+        let showPeopleModal = false;
+        let showCommandsModal = false;
+        let showDistrictsModal = false;
+        let showLoreModal = false;
+        let showMicrophoneHelpModal = false;
+
+        // Reference for speech recognition API
+        let recognition = null;
+        let isListening = false;
+
+        // TTS State variables
+        let ttsEnabled = true; // Default to true
+        let selectedMaleVoice = null;
+        let selectedFemaleVoice = null;
+        let allVoices = [];
+        let currentUtterance = null; // To keep track of the currently speaking utterance
+
+        // =====================================================================================================================================================
+        // IMPORTANT: API Key for Google Gemini
+        // This key will be provided by the Canvas environment when running in preview.
+        // If you download and host this file elsewhere (e.g., Itch.io), you will need to replace
+        // the empty string with your own valid Google Cloud API key and configure its HTTP referrer restrictions.
+        //
+        // How to get an API Key for external hosting:
+        // 1. Go to Google Cloud Console: https://console.cloud.google.com/
+        // 2. Create a new project or select an existing one.
+        // 3. Navigate to "APIs & Services" > "Credentials".
+        // 4. Click "Create Credentials" > "API Key".
+        // 5. IMPORTANT: You MUST restrict this API key. In the "API restrictions" section, select "Restrict key".
+        //    For "Application restrictions", choose "HTTP referrers (web sites)" and add the domains where your game will be hosted.
+        //    - For Itch.io, this might include your specific Itch.io game URL (e.g., `https://your-username.itch.io/your-game-name/*`) and `https://itch.io/*`.
+        //    - For local testing, you might need to add `http://localhost:*` or `http://127.0.0.1:*`.
+        //    - Ensure the "Generative Language API" is enabled in your Google Cloud project for this API key to function.
+        // WARNING: Embedding API keys directly in client-side code is generally insecure for production applications.
+        // For production, consider using a backend proxy to handle API calls securely.
+        const API_KEY = ""; // Keep this empty for Canvas preview to work automatically
+        const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + API_KEY;
+        // =====================================================================================================================================================
+
+        // Define race data with stat modifiers
+        const races = {
+            human: {
+                name: 'Human',
+                description: 'Balanced and adaptable, humans thrive in diverse environments.',
+                modifiers: {}, // No specific modifiers
+            },
+            maurKaunn: {
+                name: 'MaurKaunn',
+                description: 'Slender alien species resistant to many toxins. Known for their agility and intellect.',
+                modifiers: { dexterity: 2, intelligence: 2, strength: -1 },
+            },
+            ursax: {
+                name: 'Ursax',
+                description: 'A DNA fusion between human and bear, resulting in immense strength and resilience.',
+                modifiers: { strength: 3, stamina: 2, dexterity: -2 },
+            },
+            tigrax: {
+                name: 'Tigrax',
+                description: 'A DNA fusion between human and tiger, granting them exceptional agility and luck.',
+                modifiers: { dexterity: 3, luck: 2, charisma: -2 },
+            },
+            psyBer: {
+                name: 'PsyBer',
+                description: 'An AI in a robotic body, capable of basic human feelings and emotions and very intelligent. Lacking in social finesse.',
+                modifiers: { intelligence: 4, stamina: 1, charisma: -3 },
+            },
+        };
+
+        // Define class data with stat modifiers
+        const classes = {
+            gunner: {
+                name: 'Gunner',
+                description: 'A master of ranged combat, specializing in projectile and energy weapons for maximum impact.',
+                modifiers: { dexterity: 2, strength: 1, stamina: 1 },
+            },
+            ninja: {
+                name: 'Ninja',
+                description: 'A silent assassin, expert in stealth, melee weapons, and acrobatic maneuvers.',
+                modifiers: { dexterity: 3, luck: 1, strength: -1 },
+            },
+            hacker: {
+                name: 'Hacker',
+                description: 'A digital phantom, capable of infiltrating any network, manipulating information, and bending technology to their will.',
+                modifiers: { intelligence: 3, dexterity: 1, charisma: 1 },
+            },
+            tinkerer: {
+                name: 'Tinkerer',
+                description: 'A brilliant inventor and engineer, capable of repairing, building, and improvising gadgets from scratch.',
+                modifiers: { intelligence: 3, luck: 1, strength: -1 },
+            },
+            mechanic: {
+                name: 'Mechanic',
+                description: 'An ace with vehicles and heavy machinery, able to hotwire, repair, and upgrade any transport.',
+                modifiers: { intelligence: 2, stamina: 2, dexterity: -1 },
+            },
+            celebrity: {
+                name: 'Celebrity',
+                description: 'A public icon whose influence and charisma open doors and turn heads, skilled in social manipulation and networking.',
+                modifiers: { charisma: 4, luck: 1, strength: -2 },
+            },
+            soldier: {
+                name: 'Soldier',
+                description: 'A disciplined combatant, proficient with military-grade weapons and tactics, and resilient in the face of adversity.',
+                modifiers: { strength: 2, stamina: 2, dexterity: -1 },
+            },
+            espionager: {
+                name: 'Espionager',
+                description: 'A master of infiltration, disguise, and deception, thriving in the shadows and gathering secrets.',
+                modifiers: { charisma: 2, dexterity: 2, stamina: -1 },
+            },
+        };
+
+        // Helper function to roll a single stat within the specified range (5-14)
+        const rollStat = () => Math.floor(Math.random() * (14 - 5 + 1)) + 5;
+
+        // --- Utility Functions ---
+
+        // Function to update a message displayed to the user
+        function updateMessage(msg, type = 'info') {
+            const messageElement = document.getElementById('game-message');
+            if (messageElement) {
+                messageElement.textContent = msg;
+                messageElement.className = `bg-${type}-900/50 text-${type}-200 border border-${type}-700 p-2 rounded-md mb-2 text-sm text-center`;
+                if (!msg) messageElement.style.display = 'none'; // Hide if empty
+                else messageElement.style.display = 'block'; // Show if message
+            }
+        }
+
+        // Save Game System
+        const SAVE_KEY_PREFIX = 'nemesisRisingSave_';
+        let allSaves = {}; // In-memory cache of all saves
+
+        function initializeSaves() {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                if (key.startsWith(SAVE_KEY_PREFIX)) {
+                    try {
+                        allSaves[key] = JSON.parse(localStorage.getItem(key));
+                    } catch (e) {
+                        console.error(`Error parsing save data for key ${key}:`, e);
+                        localStorage.removeItem(key); // Remove corrupted save
+                    }
+                }
+            }
+            updateSaveLoadUI(); // Update UI after initializing
+        }
+
+        function saveGame() {
+            if (!character || !character.name) {
+                updateMessage('Cannot save: Character not fully created.', 'red');
+                return;
+            }
+
+            // Use the ISO string for the primary key part for reliable sorting and uniqueness
+            const timestampIso = new Date().toISOString();
+            // Create a filename-safe version of the ISO string for the key
+            const saveKeyTimestampPart = timestampIso.replace(/[:.-]/g, '');
+            const saveKey = `${SAVE_KEY_PREFIX}${character.name.replace(/\s+/g, '_')}_${saveKeyTimestampPart}`;
+
+            const saveData = {
+                character: character,
+                gameHistory: gameHistory,
+                importantLocations: importantLocations,
+                importantPeople: importantPeople,
+                importantEvents: importantEvents,
+                // Store the full ISO string for display purposes later
+                saveTime: timestampIso
+            };
+
+            try {
+                localStorage.setItem(saveKey, JSON.stringify(saveData));
+                allSaves[saveKey] = saveData; // Update in-memory cache
+                console.log(`Saved game: ${saveKey}`, saveData); // Debugging: log save operation
+                updateMessage(`Game saved as "${character.name} (${new Date(saveData.saveTime).toLocaleString()})"!`, 'success');
+                updateSaveLoadUI();
+            } catch (e) {
+                console.error("Error saving game:", e);
+                updateMessage("Failed to save game. Storage might be full.", 'red');
+            }
+        }
+
+        function loadGame(saveKey) {
+            const saveData = allSaves[saveKey];
+            if (!saveData) {
+                updateMessage('Selected save file not found!', 'red');
+                return;
+            }
+
+            try {
+                character = saveData.character;
+                gameHistory = saveData.gameHistory;
+                importantLocations = saveData.importantLocations;
+                importantPeople = saveData.importantPeople;
+                importantEvents = saveData.importantEvents;
+
+                currentScreen = 'game';
+                renderGameScreen();
+                console.log(`Loaded game: ${saveKey}`, saveData); // Debugging: log load operation
+                updateMessage('Game loaded successfully!', 'success');
+            } catch (e) {
+                console.error("Error loading game:", e);
+                updateMessage("Failed to load game. Save file might be corrupted.", 'red');
+            }
+        }
+
+        function deleteSave(saveKey) {
+            if (!allSaves[saveKey]) {
+                updateMessage('Selected save file not found to delete.', 'red');
+                return;
+            }
+            
+            // Get the human-readable name for the confirmation modal
+            const saveInfo = allSaves[saveKey];
+            const charName = saveInfo.character ? saveInfo.character.name : 'Unknown Player';
+            const formattedDate = saveInfo.saveTime ? new Date(saveInfo.saveTime).toLocaleString() : 'Unknown Date';
+
+            renderModal(
+                'Confirm Deletion',
+                `<p>Are you sure you want to delete the save for "<span class="font-bold text-red-400">${charName} (${formattedDate})</span>"? This action cannot be undone.</p>`,
+                () => { /* No action on standard close button click for confirmation modal */ },
+                'red-500',
+                'red-400'
+            );
+
+            // Add specific yes/no buttons to the confirmation modal
+            const modalContentDiv = document.querySelector('#modal-container .text-gray-300.text-sm.space-y-4');
+            // Find the dynamically created 'Close' button and get its parent to append new buttons
+            const existingCloseButton = document.querySelector('#modal-container #modal-close-button');
+            const buttonContainer = existingCloseButton ? existingCloseButton.parentNode : null;
+            
+            if (modalContentDiv && buttonContainer) {
+                // Remove the default 'Close' button
+                if (existingCloseButton) {
+                    existingCloseButton.remove();
+                }
+
+                const confirmButton = document.createElement('button');
+                confirmButton.textContent = 'Yes, Delete It';
+                confirmButton.className = 'mt-6 mr-3 px-4 py-2 bg-gradient-to-r from-red-600 to-red-800 text-white font-bold rounded-lg shadow-md hover:from-red-700 hover:to-red-900 transition-all duration-300';
+                confirmButton.onclick = () => {
+                    try {
+                        localStorage.removeItem(saveKey);
+                        delete allSaves[saveKey]; // Remove from in-memory cache
+                        updateMessage('Save file deleted.', 'info');
+                        updateSaveLoadUI();
+                        hideModal();
+                    } catch (e) {
+                        console.error("Error deleting save:", e);
+                        updateMessage("Failed to delete save file.", 'red');
+                        hideModal();
+                    }
+                };
+
+                const cancelButton = document.createElement('button');
+                cancelButton.textContent = 'No, Keep It';
+                cancelButton.className = 'mt-6 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-800 text-white font-bold rounded-lg shadow-md hover:from-blue-700 hover:to-blue-900 transition-all duration-300';
+                cancelButton.onclick = () => {
+                    hideModal();
+                    updateMessage('Deletion cancelled.', 'info');
+                };
+                
+                buttonContainer.appendChild(confirmButton);
+                buttonContainer.appendChild(cancelButton);
+            }
+        }
+
+
+        function updateSaveLoadUI() {
+            const saveDropdown = document.getElementById('save-dropdown');
+            const loadButton = document.getElementById('load-game-button');
+            const deleteButton = document.getElementById('delete-save-button');
+
+            if (!saveDropdown || !loadButton || !deleteButton) return; // Not on character creator screen yet
+
+            saveDropdown.innerHTML = '<option value="">-- Select a Save --</option>';
+            const sortedKeys = Object.keys(allSaves).sort((a, b) => {
+                // Sort by the 'saveTime' property stored in the saveData object (ISO string)
+                const timeA = allSaves[a].saveTime ? new Date(allSaves[a].saveTime).getTime() : 0;
+                const timeB = allSaves[b].saveTime ? new Date(allSaves[b].saveTime).getTime() : 0; // Fixed: Typo 'allSages' to 'allSaves'
+                return timeB - timeA; // Newest first
+            });
+
+            if (sortedKeys.length === 0) {
+                saveDropdown.innerHTML = '<option value="">No saves found</option>';
+                loadButton.disabled = true;
+                deleteButton.disabled = true;
+            } else {
+                sortedKeys.forEach(key => {
+                    const saveInfo = allSaves[key];
+                    const charName = saveInfo.character ? saveInfo.character.name : 'Unknown Player';
+                    // Use the stored ISO timestamp for human-readable display
+                    const formattedDate = saveInfo.saveTime ? new Date(saveInfo.saveTime).toLocaleString() : 'Unknown Date';
+                    const option = document.createElement('option');
+                    option.value = key;
+                    option.textContent = `${charName} (${formattedDate})`;
+                    saveDropdown.appendChild(option);
+                });
+                loadButton.disabled = false;
+                deleteButton.disabled = false;
+            }
+            console.log("Save UI updated. Current saves in dropdown:", sortedKeys.length); // Debugging
+        }
+
+
+        // Scrolls the chat history to the bottom
+        function scrollToBottom() {
+            const chatHistoryElement = document.getElementById('chat-history');
+            if (chatHistoryElement) {
+                chatHistoryElement.scrollTop = chatHistoryElement.scrollHeight;
+            }
+        }
+
+        // --- Modals ---
+
+        // Renders a generic modal structure
+        function renderModal(title, contentHTML, onClose, borderColor = 'cyan-500', titleColor = 'cyan-400') {
+            const modalContainer = document.getElementById('modal-container');
+            modalContainer.innerHTML = `
+                <div class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+                    <div class="bg-gray-900 border-2 border-${borderColor} rounded-lg shadow-neon p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto custom-scrollbar">
+                        <h3 class="text-2xl font-orbitron text-${titleColor} mb-4 border-b border-gray-700 pb-2">${title}</h3>
+                        <div class="text-gray-300 text-sm space-y-4">
+                            ${contentHTML}
+                        </div>
+                        <button id="modal-close-button"
+                            class="mt-6 px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg shadow-md hover:from-purple-700 hover:to-pink-700 transition-all duration-300">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('modal-close-button').onclick = onClose;
+        }
+
+        function hideModal() {
+            document.getElementById('modal-container').innerHTML = '';
+        }
+
+        function showLocationsModalFunc() {
+            const content = importantLocations.length > 0 ?
+                `<ul class="list-disc list-inside">${importantLocations.map(loc => `<li>${loc}</li>`).join('')}</ul>` :
+                `<p>No important locations recorded yet.</p>`;
+            renderModal('Important Locations', content, () => { showLocationsModal = false; hideModal(); });
+            showLocationsModal = true;
+        }
+
+        function showPeopleModalFunc() {
+            const content = importantPeople.length > 0 ?
+                `<ul class="list-disc list-inside">${importantPeople.map(person => `<li>${person}</li>`).join('')}</ul>` :
+                `<p>No important people recorded yet.</p>`;
+            renderModal('Important People', content, () => { showPeopleModal = false; hideModal(); });
+            showPeopleModal = true;
+        }
+
+        function showCommandsModalFunc() {
+            const commands = [
+                { cmd: '!RESTART', desc: 'Erases all game progress and starts a new character creation.' },
+                { cmd: '!SAVE', desc: 'Saves your current game progress.' }, // New command
+                { cmd: '!LOAD', desc: 'Opens the load game menu to select a saved game.' }, // New command, but actually opens a modal
+                { cmd: '!LOCATIONS', desc: 'Displays a list of all important locations discovered so far.' },
+                { cmd: '!PEOPLE', desc: 'Displays a list of all important people encountered so far.' },
+                { cmd: '!DISTRICTS', desc: 'Displays information about Skylight City\'s districts.' },
+                { cmd: '!LORE', desc: 'Displays a comprehensive guide to the world of Nemesis Rising.' },
+                { cmd: '!COPYLOG', desc: 'Copies the entire game history to your clipboard.' },
+                { cmd: '!MICROPHONEHELP', desc: 'Provides guidance on enabling microphone access for voice input.' },
+                { cmd: '!COMMANDS', desc: 'Shows this list of available game commands.' },
+            ];
+            const content = `<ul class="list-none text-gray-300 space-y-3">
+                ${commands.map(cmd => `
+                    <li>
+                        <span class="font-bold text-lg text-blue-300 block">${cmd.cmd}</span>
+                        <span class="text-sm italic text-gray-400">${cmd.desc}</span>
+                    </li>
+                `).join('')}
+            </ul>`;
+            renderModal('Available Commands', content, () => { showCommandsModal = false; hideModal(); }, 'green-500', 'green-400');
+            showCommandsModal = true;
+        }
+
+        function showDistrictsModalFunc() {
+            const districts = [
+                { name: 'Arcology Prime (The Spire)', vibe: 'Sterile, luxurious, surveilled.', features: 'The highest and most opulent district. Home to mega-corporations (OmniCorp, GenTech) and the elite. Features automated sky-trams, rooftop gardens, exclusive clubs, and high-end clinics. Access is highly restricted.' },
+                { name: 'Maxonn Tower (Corporate Nexus & Planetary Apex)', vibe: 'Imposing, awe-inspiring, exclusive, secretive.', features: 'The absolute tallest structure on the planet, headquarters of the Maxonn Corporation. Symbol of unparalleled power and technological achievement. Features zero-gravity elevators, exclusive residential floors, corporate archives, high-security data centers, and a private skyport.' },
+                { name: 'Neon Bazaar (Market Sector)', vibe: 'Bustling, sensory overload, dangerous.', features: 'A vibrant, chaotic, and densely packed commercial hub. Anything can be bought or sold, legally or illegally. A maze of glowing stalls, bustling crowds, hidden back alleys, black markets, tech repair shops, street food, entertainment arcades, and underground fighting rings.' },
+                { name: 'The Glitch Arena (Entertainment & Sports Stadium)', vibe: 'Electric, exhilarating, grand.', features: 'A colossal, multi-tiered stadium for hyper-sensory concerts, brutal combat sports, and massive holographic spectacles. A central hub for entertainment with adaptable architecture, retractable roof, combat rings, and luxury skyboxes.' },
+                { name: 'The Gridlock (Residential & Industrial)', vibe: 'Gritty, hardworking, polluted, overlooked.', features: 'A sprawling, mid-level sector with endless traffic jams on multi-layered skyways. Features apartment blocks stacked upon ancient factories, a dense working-class population, repurposed industrial zones, struggling clinics, and local watering holes.' },
+                { name: 'Skyport Omega (International Airport)', vibe: 'Bustling, transient, imposing, heavily secured.', features: 'The city\'s massive international and interstellar transport hub. A marvel of advanced engineering with automated cargo loaders, sleek passenger shuttles, inter-system freighters, vast landing pads, custom inspection checkpoints, and orbital launch bays.' },
+                { name: 'The Maws (Slums District)', vibe: 'Grimy, desperate, resilient, opportunistic.', features: 'A sprawling, densely packed slums district at the fringes of the Gridlock, bordering the toxic Undercity. Characterized by ramshackle dwellings, makeshift markets, labyrinthine alleys, perpetual smog, black market operations (SkrapTek workshops), and hidden info-broker dens.' },
+                { name: 'The Undercity (Forgotten Depths)', vibe: 'Oppressive, dangerous, mysterious, survivalist.', features: 'The true bottom of Skylight City, built upon the ruins of older civilizations. Dark, damp, and often hazardous, home to the desperate, mutated creatures, and forgotten secrets. Features ancient sewers, abandoned research labs, hidden cults, scavenger camps, and toxic waste zones.' },
+                { name: 'The Docks (Shoreside Shipping Hub)', vibe: 'Industrial, bustling, grimy.', features: 'The main shoreside area for cargo shipping and receiving. Dominated by massive cargo warehouses, towering container stacks, and automated loading cranes. A place of constant activity, with ships arriving from across the globe and beyond. Often a hotspot for smuggling and illicit cargo transfers.' },
+                { name: 'Lindfeld Forest (Northern Outskirts)', vibe: 'Serene, natural, potentially wild.', features: 'A vast expanse of regenerated forest on the northern outskirts of Skylight City. While parts are maintained for recreation, deeper sections are wild and untamed, home to unique flora and fauna, and rumored hidden enclaves or forgotten research facilities. Offers a stark contrast to the urban sprawl.' },
+                { name: 'Skylight Central Underground (Subway System)', vibe: 'Efficient, labyrinthine, occasionally dangerous.', features: 'The extensive underground fusion-train subway system that crisscrosses Skylight City. While a vital transportation network, its older, abandoned tunnels and maintenance shafts are a subterranean labyrinth, sometimes home to squatters, rogue AIs, or forgotten secrets. High-speed trains connect all major districts.' },
+                { name: 'VanGaren Mines (Abandoned Copper Mine)', vibe: 'Desolate, dangerous, filled with echoes.', features: 'An abandoned and highly dangerous copper mine located on the far western edge of the city\'s sprawl. Shut down decades ago due to partial collapse and the discovery of unstable subterranean gases. Now, only desperate scavengers or those seeking to hide something dare to venture into its treacherous, echoing shafts. Rumored to contain valuable untouched resources or dark secrets.' },
+                { name: 'Thrunkville (Amusement Park)', vibe: 'Over-the-top, synthetic joy, subtly unsettling.', features: 'A massive, perpetually vibrant amusement park located on the eastern side of the city. Sponsored and owned by "Thrunk," the mega-corporation behind Thrunk Cola, it features dazzling holographic rides, bizarre synthetic mascots, and an endless supply of sugary beverages. Beneath its cheerful facade, corporate surveillance and consumer manipulation are rampant.' }
+            ];
+
+            let contentHTML = '<div class="space-y-8">';
+            loreData.forEach(categoryData => {
+                contentHTML += `<div>
+                    <h4 class="text-2xl font-orbitron text-purple-400 mb-3 border-b border-gray-800 pb-1">${categoryData.category}</h4>
+                    <div class="space-y-4">`;
+                categoryData.sections.forEach(section => {
+                    contentHTML += `<div class="p-3 bg-gray-800/50 rounded-md border border-gray-700">
+                        <p class="font-bold text-lg text-white mb-2">${section.title}</p>`;
+                    section.content.forEach(paragraph => {
+                        contentHTML += `<p class="text-gray-300 text-sm mb-1">${paragraph}</p>`;
+                    });
+                    contentHTML += `</div>`;
+                });
+                contentHTML += `</div></div>`;
+            });
+            contentHTML += `</div>`;
+
+            renderModal('NEMESIS RISING: Lore Guide', contentHTML, () => { showLoreModal = false; hideModal(); }, 'green-500', 'green-400');
+            showLoreModal = true;
+        }
+
+        function showMicrophoneHelpModalFunc() {
+            const content = `<div class="text-gray-300 text-sm space-y-4">
+                <p>If you're having trouble with voice input, ensure your browser has permission to access your microphone.</p>
+                <p class="font-bold text-lg text-blue-300">Common Browser Settings:</p>
+                <div>
+                    <p class="font-semibold text-white">Google Chrome:</p>
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Click the <b>lock icon</b> or <b>camera icon</b> in the left side of the address bar.</li>
+                        <li>Find "Microphone" and select "Allow" or "Always allow on this site."</li>
+                        <li>You may need to reload the page.</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold text-white">Mozilla Firefox:</p>
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Click the <b>microphone icon</b> or <b>camera icon</b> in the left side of the address bar.</li>
+                        <li>Select "Allow" or "Always Allow Access."</li>
+                        <li>You may need to reload the page.</li>
+                    </ul>
+                </div>
+                <div>
+                    <p class="font-semibold text-white">Microsoft Edge:</p>
+                    <ul class="list-disc list-inside ml-4">
+                        <li>Click the <b>lock icon</b> or <b>camera icon</b> in the left side of the address bar.</li>
+                        <li>Under "Microphone," select "Allow" or "Ask (recommended)."</li>
+                        <li>You may need to reload the page.</li>
+                    </ul>
+                </div>
+                <p class="text-red-300 italic">If these steps don't work, check your operating system's privacy settings for microphone access and ensure your browser is listed and allowed.</p>
+            </div>`;
+            renderModal('Microphone Access Help', content, () => { showMicrophoneHelpModal = false; hideModal(); }, 'green-500', 'green-400');
+            showMicrophoneHelpModal = true;
+        }
+
+
+        // --- Character Creator Screen ---
+
+        function renderCharacterCreator() {
+            const gameContent = document.getElementById('game-content');
+            gameContent.innerHTML = `
+                <div class="w-full max-w-4xl bg-gray-800/70 backdrop-blur-sm p-8 rounded-xl shadow-neon border-2 border-purple-500 animate-fade-in text-center">
+                    <h2 class="text-3xl font-orbitron text-purple-400 mb-6">Character Creation</h2>
+
+                    <div id="creator-message" class="hidden bg-blue-900/50 text-blue-200 border border-blue-700 p-3 rounded-md mb-4 text-sm"></div>
+
+                    <!-- Character Name Input -->
+                    <div class="mb-8">
+                        <h3 class="text-2xl text-cyan-400 mb-4">Choose Your Name:</h3>
+                        <input type="text" id="character-name-input"
+                            class="w-full p-3 rounded-lg bg-gray-900 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-gray-400"
+                            placeholder="Enter your character's name..." maxlength="25">
+                    </div>
+
+                    <!-- Gender Selection -->
+                    <div class="mb-8">
+                        <h3 class="text-2xl text-cyan-400 mb-4">Choose Your Gender:</h3>
+                        <div class="flex justify-center gap-4">
+                            <label class="inline-flex items-center"><input type="radio" class="form-radio text-purple-600 h-5 w-5" name="gender" value="Male"> <span class="ml-2 text-white">Male</span></label>
+                            <label class="inline-flex items-center"><input type="radio" class="form-radio text-purple-600 h-5 w-5" name="gender" value="Female"> <span class="ml-2 text-white">Female</span></label>
+                            <label class="inline-flex items-center"><input type="radio" class="form-radio text-purple-600 h-5 w-5" name="gender" value="Other"> <span class="ml-2 text-white">Other</span></label>
+                        </div>
+                    </div>
+
+                    <!-- Race Selection -->
+                    <div class="mb-8">
+                        <h3 class="2xl text-cyan-400 mb-4">Choose Your Race:</h3>
+                        <div id="race-selection" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Race buttons will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Class Selection -->
+                    <div class="mb-8">
+                        <h3 class="2xl text-cyan-400 mb-4">Choose Your Class:</h3>
+                        <div id="class-selection" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <!-- Class buttons will be injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Stat Rolling & Display -->
+                    <div class="mb-8">
+                        <h3 class="2xl text-cyan-400 mb-4">Your Stats:</h3>
+                        <div id="stats-display" class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                            <!-- Stats will be injected here -->
+                        </div>
+                        <button id="roll-stats-button"
+                            class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold rounded-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Roll Stats (5-14 base)
+                        </button>
+                    </div>
+
+                    <!-- Character Description Generation -->
+                    <div id="description-section" class="mb-8 hidden">
+                        <h3 class="2xl text-cyan-400 mb-4">Character Description:</h3>
+                        <div id="character-description-display" class="bg-gray-700/50 p-4 rounded-md border border-gray-600 text-left text-gray-300 whitespace-pre-wrap">
+                            Generate a description based on your choices and stats.
+                        </div>
+                        <button id="generate-description-button"
+                            class="mt-4 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-lg shadow-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Generate Character Description
+                        </button>
+                    </div>
+
+                    <!-- Start Game Button -->
+                    <button id="start-game-button"
+                        class="mt-8 px-8 py-4 bg-gradient-to-r from-green-500 to-blue-500 text-white font-bold text-xl rounded-lg shadow-lg hover:from-green-600 hover:to-blue-600 transition-all duration-300 animate-pulse-once hidden">
+                        Enter Skylight City
+                    </button>
+
+                    <!-- Load/Delete Game Section -->
+                    <div id="save-load-section" class="mt-8 pt-8 border-t-2 border-gray-700">
+                        <h3 class="text-2xl font-orbitron text-orange-400 mb-4">Load or Delete Game:</h3>
+                        <div class="flex flex-col sm:flex-row gap-4 justify-center items-center">
+                            <select id="save-dropdown" class="p-3 rounded-lg bg-gray-900 text-white border border-orange-500 focus:outline-none focus:ring-2 focus:ring-yellow-500 flex-1"></select>
+                            <button id="load-game-button" class="px-6 py-3 bg-gradient-to-r from-teal-500 to-green-500 text-white font-bold rounded-lg shadow-md hover:from-teal-600 hover:to-green-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Load Game
+                            </button>
+                            <button id="delete-save-button" class="px-6 py-3 bg-gradient-to-r from-red-600 to-pink-600 text-white font-bold rounded-lg shadow-md hover:from-red-700 hover:to-pink-700 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Delete Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            setupCharacterCreatorListeners();
+            updateCreatorMessage(''); // Clear any previous messages
+            initializeSaves(); // Populate the save/load dropdown
+        }
+
+        let characterCreatorState = {
+            name: '',
+            gender: '',
+            raceKey: null,
+            classKey: null,
+            stats: { strength: 0, intelligence: 0, dexterity: 0, charisma: 0, luck: 0, stamina: 0 },
+            description: '',
+            isRolling: false,
+            isGeneratingDescription: false,
+        };
+
+        function updateCreatorMessage(msg, type = 'info') {
+            const msgEl = document.getElementById('creator-message');
+            if (msgEl) {
+                msgEl.textContent = msg;
+                msgEl.className = `bg-${type}-900/50 text-${type}-200 border border-${type}-700 p-3 rounded-md mb-4 text-sm`;
+                if (msg) msgEl.style.display = 'block';
+                else msgEl.style.display = 'none';
+            }
+        }
+
+        function renderRaceButtons() {
+            const container = document.getElementById('race-selection');
+            container.innerHTML = Object.entries(races).map(([key, race]) => `
+                <button type="button" data-race-key="${key}"
+                    class="p-4 rounded-lg border-2 ${characterCreatorState.raceKey === key ? 'border-green-400 bg-green-900/30' : 'border-gray-700 bg-gray-900/50 hover:border-purple-400'}
+                    transition-all duration-300 transform hover:scale-105">
+                    <span class="font-bold text-xl block text-white">${race.name}</span>
+                    <span class="text-sm text-gray-400">${race.description}</span>
+                    ${Object.keys(race.modifiers).length > 0 ? `
+                    <div class="mt-2 text-xs text-yellow-400">
+                        Modifiers: ${Object.entries(race.modifiers).map(([stat, val]) => `
+                        <span>${val > 0 ? '+' : ''}${val} ${stat.charAt(0).toUpperCase() + stat.slice(1)} </span>
+                        `).join('')}
+                    </div>` : ''}
+                </button>
+            `).join('');
+            container.querySelectorAll('button').forEach(button => {
+                button.onclick = () => {
+                    characterCreatorState.raceKey = button.dataset.raceKey;
+                    renderRaceButtons(); // Re-render to update selection style
+                    updateRollStatsButtonState();
+                };
+            });
+        }
+
+        function renderClassButtons() {
+            const container = document.getElementById('class-selection');
+            container.innerHTML = Object.entries(classes).map(([key, cls]) => `
+                <button type="button" data-class-key="${key}"
+                    class="p-4 rounded-lg border-2 ${characterCreatorState.classKey === key ? 'border-green-400 bg-green-900/30' : 'border-gray-700 bg-gray-900/50 hover:border-purple-400'}
+                    transition-all duration-300 transform hover:scale-105">
+                    <span class="font-bold text-xl block text-white">${cls.name}</span>
+                    <span class="text-sm text-gray-400">${cls.description}</span>
+                    ${Object.keys(cls.modifiers).length > 0 ? `
+                    <div class="mt-2 text-xs text-yellow-400">
+                        Modifiers: ${Object.entries(cls.modifiers).map(([stat, val]) => `
+                        <span>${val > 0 ? '+' : ''}${val} ${stat.charAt(0).toUpperCase() + stat.slice(1)} </span>
+                        `).join('')}
+                    </div>` : ''}
+                </button>
+            `).join('');
+            container.querySelectorAll('button').forEach(button => {
+                button.onclick = () => {
+                    characterCreatorState.classKey = button.dataset.classKey;
+                    renderClassButtons(); // Re-render to update selection style
+                    updateRollStatsButtonState();
+                };
+            });
+        }
+
+        function renderStatsDisplay() {
+            const container = document.getElementById('stats-display');
+            container.innerHTML = Object.entries(characterCreatorState.stats).map(([statName, value]) => `
+                <div class="bg-gray-700/50 p-3 rounded-md border border-gray-600 flex justify-between items-center">
+                    <span class="text-lg text-white font-semibold">${statName.charAt(0).toUpperCase() + statName.slice(1)}:</span>
+                    <span class="text-xl text-green-300 font-bold">${value}</span>
+                </div>
+            `).join('');
+            updateGenerateDescriptionButtonState();
+        }
+
+        function updateRollStatsButtonState() {
+            const button = document.getElementById('roll-stats-button');
+            button.disabled = !characterCreatorState.raceKey || !characterCreatorState.classKey || characterCreatorState.isRolling;
+            button.textContent = characterCreatorState.isRolling ? 'Rolling...' : 'Roll Stats (5-14 base)';
+        }
+
+        function updateGenerateDescriptionButtonState() {
+            const button = document.getElementById('generate-description-button');
+            const descriptionSection = document.getElementById('description-section');
+            const startGameButton = document.getElementById('start-game-button');
+
+            const canGenerate = characterCreatorState.name.trim() &&
+                                 characterCreatorState.gender &&
+                                 characterCreatorState.raceKey &&
+                                 characterCreatorState.classKey &&
+                                 Object.values(characterCreatorState.stats).every(s => s > 0) &&
+                                 !characterCreatorState.isGeneratingDescription;
+
+            if (Object.values(characterCreatorState.stats).every(s => s > 0)) {
+                descriptionSection.style.display = 'block';
+            } else {
+                descriptionSection.style.display = 'none';
+            }
+
+            button.disabled = !canGenerate;
+            button.textContent = characterCreatorState.isGeneratingDescription ? 'Generating...' : 'Generate Character Description';
+
+            startGameButton.style.display = characterCreatorState.description ? 'block' : 'hidden';
+        }
+
+        function setupCharacterCreatorListeners() {
+            // Initial render of dynamic elements
+            renderRaceButtons();
+            renderClassButtons();
+            renderStatsDisplay();
+            updateRollStatsButtonState();
+            updateGenerateDescriptionButtonState();
+
+            document.getElementById('character-name-input').addEventListener('input', (e) => {
+                characterCreatorState.name = e.target.value;
+                updateGenerateDescriptionButtonState();
+            });
+
+            document.querySelectorAll('input[name="gender"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    characterCreatorState.gender = e.target.value;
+                    updateGenerateDescriptionButtonState();
+                });
+            });
+
+            document.getElementById('roll-stats-button').addEventListener('click', () => {
+                if (!characterCreatorState.name.trim() || !characterCreatorState.gender || !characterCreatorState.raceKey || !characterCreatorState.classKey) {
+                    updateCreatorMessage('Please enter a name, select gender, race, and class first!', 'red');
+                    return;
+                }
+                characterCreatorState.isRolling = true;
+                updateRollStatsButtonState();
+                updateCreatorMessage('Rolling your stats...');
+
+                setTimeout(() => {
+                    const rolled = {
+                        strength: rollStat(),
+                        intelligence: rollStat(),
+                        dexterity: rollStat(),
+                        charisma: rollStat(),
+                        luck: rollStat(),
+                        stamina: rollStat(),
+                    };
+
+                    const raceMods = races[characterCreatorState.raceKey]?.modifiers || {};
+                    for (const stat in raceMods) {
+                        rolled[stat] = Math.min(20, Math.max(0, rolled[stat] + raceMods[stat]));
+                    }
+
+                    const classMods = classes[characterCreatorState.classKey]?.modifiers || {};
+                    for (const stat in classMods) {
+                        rolled[stat] = Math.min(20, Math.max(0, rolled[stat] + classMods[stat]));
+                    }
+
+                    characterCreatorState.stats = rolled;
+                    characterCreatorState.isRolling = false;
+                    renderStatsDisplay();
+                    updateRollStatsButtonState();
+                    updateCreatorMessage('Stats rolled! Now generate your character description.');
+                }, 1000);
+            });
+
+            document.getElementById('generate-description-button').addEventListener('click', async () => {
+                if (!characterCreatorState.name.trim() || !characterCreatorState.gender || !characterCreatorState.raceKey || !characterCreatorState.raceKey || Object.values(characterCreatorState.stats).some(s => s === 0)) {
+                    updateCreatorMessage('Please enter a name, select gender, race, class, and roll your stats first!', 'red');
+                    return;
+                }
+
+                characterCreatorState.isGeneratingDescription = true;
+                updateGenerateDescriptionButtonState();
+                updateCreatorMessage('CyberLord is crafting your character\'s story...');
+
+                const prompt = `Generate a detailed and creative character description for a futuristic sci-fi RPG. The character's name is ${characterCreatorState.name}, they are ${characterCreatorState.gender}, a ${races[characterCreatorState.raceKey].name} ${classes[characterCreatorState.classKey].name} with these stats: Strength ${characterCreatorState.stats.strength}, Intelligence ${characterCreatorState.stats.intelligence}, Dexterity ${characterCreatorState.stats.dexterity}, Charisma ${characterCreatorState.stats.charisma}, Luck ${characterCreatorState.stats.luck}, Stamina ${characterCreatorState.stats.stamina}. Include how their name, gender, race, class, and stats influence their appearance, personality, and abilities in Skylight City. Highlight any unique racial bonuses or class penalties based on these attributes. Make it a maximum of 2 paragraphs long.`;
+
+                try {
+                    const chatPayload = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = {
+                        contents: chatPayload,
+                        generationConfig: {
+                            responseMimeType: "application/json",
+                            responseSchema: {
+                                type: "OBJECT",
+                                properties: {
+                                    narrative: { type: "STRING" },
+                                    healthChange: { type: "NUMBER", nullable: true },
+                                    creditsChange: { type: "NUMBER", nullable: true },
+                                    xpChange: { type: "NUMBER", nullable: true },
+                                    statBonus: {
+                                        type: "OBJECT",
+                                        properties: { stat: { type: "STRING" }, amount: { type: "NUMBER" } },
+                                        nullable: true
+                                    },
+                                    notableMomentsSummary: { type: "STRING", nullable: true },
+                                    locations: { type: "ARRAY", items: { type: "STRING" } },
+                                    people: { type: "ARRAY", items: { type: "STRING" } },
+                                    events: { type: "ARRAY", items: { type: "STRING" } },
+                            },
+                            required: ["narrative", "locations", "people", "events"]
+                        }
+                    }
+                };
+
+                    // Log the API URL being used
+                    console.log("Attempting to call API at:", API_URL);
+
+                    const response = await fetch(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    // Log the raw response status
+                    console.log("API Response Status:", response.status);
+
+                    const result = await response.json();
+
+                    // Log the full result for inspection
+                    console.log("Full API Response:", result);
+
+                    if (response.ok) { // Check if the HTTP status is OK (2xx)
+                        if (result.candidates && result.candidates.length > 0 &&
+                            result.candidates[0].content && result.candidates[0].content.parts &&
+                            result.candidates[0].content.parts.length > 0) {
+                            const jsonText = result.candidates[0].content.parts[0].text;
+                            const parsedResponse = JSON.parse(jsonText);
+
+                            // Ensure narrative is extracted, default to a message if empty
+                            characterCreatorState.description = parsedResponse.narrative || "The CyberLord could not craft a detailed story based on your input. Try adjusting your character choices or input.";
+                            document.getElementById('character-description-display').textContent = characterCreatorState.description;
+                            updateCreatorMessage('Character description generated!');
+                        } else {
+                            const errorMessage = 'Failed to generate description: No content or unexpected API response structure from AI. Check console for "Full API Response:".';
+                            updateMessage(errorMessage, 'red');
+                            console.error(errorMessage, result);
+                        }
+                    } else {
+                        const errorData = result.error ? result.error.message : JSON.stringify(result);
+                        const errorMessage = `Failed to generate description: API Error (${response.status} ${response.statusText}): ${errorData}. Check console for "Full API Response:".`;
+                        updateMessage(errorMessage, 'red');
+                        console.error(errorMessage, result);
+                    }
+                } catch (error) {
+                    const errorMessage = `An network or parsing error occurred during description generation: ${error.message}. This might be due to CORS, an invalid URL, or a network issue. Check console for details.`;
+                    updateMessage(errorMessage, 'red');
+                    console.error("Fetch error during description generation:", error);
+                } finally {
+                    characterCreatorState.isGeneratingDescription = false;
+                    updateGenerateDescriptionButtonState();
+                }
+            });
+
+            document.getElementById('start-game-button').addEventListener('click', () => {
+                if (characterCreatorState.description) {
+                    character = {
+                        name: characterCreatorState.name.trim(),
+                        gender: characterCreatorState.gender,
+                        race: characterCreatorState.raceKey,
+                        className: characterCreatorState.classKey,
+                        stats: { ...characterCreatorState.stats }, // Deep copy stats
+                        description: characterCreatorState.description,
+                        health: 100, // Starting health
+                        credits: 500, // Starting credits
+                        xp: 0, // Starting XP
+                    };
+                    currentScreen = 'game';
+                    renderGameScreen();
+                    // saveGame(); // Removed: Initial save no longer automatic
+                } else {
+                    updateCreatorMessage('Please generate your character description before starting the game!', 'red');
+                }
+            });
+
+            // Load/Delete Game Listeners
+            const saveDropdown = document.getElementById('save-dropdown');
+            const loadButton = document.getElementById('load-game-button');
+            const deleteButton = document.getElementById('delete-save-button');
+
+            if (saveDropdown) { // Ensure elements exist before adding listeners
+                loadButton.addEventListener('click', () => {
+                    const selectedKey = saveDropdown.value;
+                    if (selectedKey) {
+                        loadGame(selectedKey);
+                    } else {
+                        updateCreatorMessage('Please select a save file to load.', 'info');
+                    }
+                });
+
+                deleteButton.addEventListener('click', () => {
+                    const selectedKey = saveDropdown.value;
+                    if (selectedKey) {
+                        deleteSave(selectedKey);
+                    } else {
+                        updateCreatorMessage('Please select a save file to delete.', 'info');
+                    }
+                });
+            }
+        }
+
+        // --- Game Screen ---
+
+        // TTS Functions
+        function loadVoices() {
+            allVoices = window.speechSynthesis.getVoices();
+            const maleVoices = allVoices.filter(voice => voice.lang.startsWith('en') && (voice.name.toLowerCase().includes('male') || voice.name.toLowerCase().includes('david') || voice.name.toLowerCase().includes('daniel') || voice.name.toLowerCase().includes('alex')));
+            const femaleVoices = allVoices.filter(voice => voice.lang.startsWith('en') && (voice.name.toLowerCase().includes('female') || voice.name.toLowerCase().includes('susan') || voice.name.toLowerCase().includes('zira') || voice.name.toLowerCase().includes('sara')));
+
+            // Attempt to pick a good default voice if not already set
+            if (!selectedMaleVoice && maleVoices.length > 0) {
+                selectedMaleVoice = maleVoices.find(voice => voice.default) || maleVoices[0];
+            }
+            if (!selectedFemaleVoice && femaleVoices.length > 0) {
+                selectedFemaleVoice = femaleVoices.find(voice => voice.default) || femaleVoices[0];
+            }
+
+            // Populate the dropdown with all English voices. Prioritize selectedMaleVoice if it exists, otherwise selectedFemaleVoice, else first English voice.
+            populateVoiceDropdown('narrative-voice-select', allVoices.filter(voice => voice.lang.startsWith('en')), selectedMaleVoice || selectedFemaleVoice || allVoices.find(v => v.lang.startsWith('en')));
+        }
+
+        function populateVoiceDropdown(id, voices, currentSelection) {
+            const dropdown = document.getElementById(id);
+            if (!dropdown) return;
+
+            dropdown.innerHTML = '';
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice.name;
+                option.textContent = `${voice.name} (${voice.lang})`;
+                if (currentSelection && voice.name === currentSelection.name) {
+                    option.selected = true;
+                }
+                dropdown.appendChild(option);
+            });
+            dropdown.disabled = voices.length === 0;
+        }
+
+        function speakNarrative(text) {
+            if (!ttsEnabled) {
+                return;
+            }
+
+            // Stop any ongoing speech
+            if (currentUtterance && window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'en-US';
+
+            // Choose voice based on the selected narrative voice in the dropdown
+            const voiceDropdown = document.getElementById('narrative-voice-select');
+            const selectedVoiceName = voiceDropdown ? voiceDropdown.value : null;
+
+            let voiceToUse = null;
+            if (selectedVoiceName) {
+                voiceToUse = allVoices.find(voice => voice.name === selectedVoiceName);
+            } else if (selectedMaleVoice) { // Fallback to male if no specific narrative voice chosen
+                voiceToUse = selectedMaleVoice;
+            } else if (selectedFemaleVoice) { // Fallback to female if no male selected
+                voiceToUse = selectedFemaleVoice;
+            } else if (allVoices.length > 0) {
+                voiceToUse = allVoices.find(v => v.lang.startsWith('en')) || allVoices[0]; // Generic English or first available
+            }
+
+
+            if (voiceToUse) {
+                currentUtterance.voice = voiceToUse;
+            } else {
+                console.warn("No suitable voice found for TTS. Using default browser voice.");
+            }
+
+            currentUtterance.onerror = (event) => {
+                console.error('Speech synthesis error:', event.error);
+                updateMessage(`TTS error: ${event.error}. Try selecting a different voice.`, 'red');
+            };
+
+            window.speechSynthesis.speak(currentUtterance);
+        }
+
+        function renderGameScreen() {
+            const gameContent = document.getElementById('game-content');
+            gameContent.innerHTML = `
+                <div class="w-full max-w-5xl h-[80vh] flex flex-col md:flex-row bg-gray-800/70 backdrop-blur-sm rounded-xl shadow-neon border-2 border-purple-500 animate-fade-in">
+                    <!-- Character Info Sidebar -->
+                    <div class="w-full md:w-1/4 p-4 border-b-2 md:border-b-0 md:border-r-2 border-purple-600 bg-gray-900/50 flex flex-col">
+                        <h3 class="text-xl font-orbitron text-cyan-400 mb-4 border-b border-gray-700 pb-2">Character Profile</h3>
+                        <div id="character-profile-details" class="text-xs text-gray-300 flex-1 overflow-y-auto custom-scrollbar">
+                            <!-- Character details injected here -->
+                        </div>
+                    </div>
+
+                    <!-- Game History and Input -->
+                    <div class="w-full md:w-3/4 flex flex-col p-4">
+                        <h3 class="text-2xl font-orbitron text-purple-400 mb-4 text-center border-b border-gray-700 pb-2">CyberLord's Narrative</h3>
+
+                        <!-- TTS Controls -->
+                        <div class="flex flex-col sm:flex-row gap-2 mb-4 p-2 bg-gray-900/50 border border-gray-700 rounded-md items-center">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="tts-toggle" class="sr-only peer" ${ttsEnabled ? 'checked' : ''}>
+                                <div class="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                                <span class="ms-3 text-sm font-medium text-gray-300">TTS On/Off</span>
+                            </label>
+                            <div class="flex-1 flex flex-col sm:flex-row gap-2 items-center w-full sm:w-auto">
+                                <label for="narrative-voice-select" class="text-sm font-medium text-gray-300 whitespace-nowrap">CyberLord Voice:</label>
+                                <select id="narrative-voice-select" class="flex-1 p-2 rounded-lg bg-gray-700 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"></select>
+                            </div>
+                        </div>
+
+                        <div id="chat-history" class="flex-1 overflow-y-auto p-2 rounded-md bg-gray-900/50 border border-gray-700 custom-scrollbar mb-4">
+                            <!-- Game history messages injected here -->
+                        </div>
+                        <div id="game-message" class="bg-yellow-900/50 text-yellow-200 border border-yellow-700 p-2 rounded-md mb-2 text-sm text-center" style="display: none;">
+                            <!-- Dynamic messages like "listening..." or errors -->
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-2">
+                            <input type="text" id="game-input"
+                                class="flex-1 p-3 rounded-lg bg-gray-900 text-white border border-purple-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 placeholder-gray-400"
+                                placeholder="Type your command (!COMMANDS for help)...">
+                            <button id="send-input-button"
+                                class="px-6 py-3 bg-gradient-to-r from-teal-500 to-cyan-500 text-white font-bold rounded-lg shadow-md hover:from-teal-600 hover:to-cyan-600 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                                Send
+                            </button>
+                            <button id="voice-input-button"
+                                class="px-6 py-3 font-bold rounded-lg shadow-md transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed bg-gradient-to-r from-orange-500 to-yellow-500 hover:from-orange-600 hover:to-yellow-600">
+                                Voice Input
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            setupGameScreenListeners();
+            updateCharacterProfileDisplay();
+            updateChatHistoryDisplay();
+            // Initial greeting from CyberLord if history is empty
+            // Removed automatic initial save from here as well.
+            if (gameHistory.length === 0 && character) {
+                const initialNarrative = `Welcome, ${character.name}, to Skylight City, a sprawling metropolis bathed in perpetual neon. The air crackles with ambition and hidden secrets. Your adventure begins now. What is your first move?`;
+                gameHistory.push({ type: 'narrative', text: initialNarrative });
+                updateChatHistoryDisplay();
+                speakNarrative(initialNarrative); // Speak initial narrative
+            } else if (gameHistory.length > 0) {
+                // If loading a game, speak the last narrative entry
+                const lastNarrative = gameHistory.slice().reverse().find(entry => entry.type === 'narrative');
+                if (lastNarrative) {
+                    speakNarrative(lastNarrative.text);
+                }
+            }
+
+            // Load and populate TTS voices after elements are in DOM
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+                loadVoices(); // Call initially in case voices are already loaded
+            }
+        }
+
+        function updateCharacterProfileDisplay() {
+            const profileDetails = document.getElementById('character-profile-details');
+            if (character && profileDetails) {
+                profileDetails.innerHTML = `
+                    <p><span class="font-bold text-white">Name:</span> ${character.name}</p>
+                    <p><span class="font-bold text-white">Gender:</span> ${character.gender}</p>
+                    <p><span class="font-bold text-white">Race:</span> ${races[character.race]?.name}</p>
+                    <p><span class="font-bold text-white">Class:</span> ${classes[character.className]?.name}</p>
+                    <div class="mt-4">
+                        <p class="font-bold text-white">Health:</p>
+                        <div class="w-full bg-red-900 rounded-full h-2.5">
+                            <div class="bg-red-500 h-2.5 rounded-full" style="width: ${character.health}%"></div>
+                        </div>
+                        <span class="text-white text-xs">${character.health}/100</span>
+                    </div>
+                    <p class="mt-2"><span class="font-bold text-white">Credits:</span> ${character.credits}</p>
+                    <p class="mt-2"><span class="font-bold text-white">XP:</span> ${character.xp}</p>
+                    <div class="mt-4">
+                        <p class="font-bold text-white">Stats:</p>
+                        <ul class="list-disc list-inside ml-2">
+                            ${Object.entries(character.stats).map(([statName, value]) => `
+                                <li><span class="font-semibold text-purple-300">${statName.charAt(0).toUpperCase() + statName.slice(1)}:</span> ${value}</li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                    <div class="mt-4">
+                        <p class="font-bold text-white">Description:</p>
+                        <p class="text-xs italic text-gray-400 max-h-40 overflow-y-auto custom-scrollbar">${character.description}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function updateChatHistoryDisplay(isTyping = false) {
+            const chatHistoryElement = document.getElementById('chat-history');
+            if (chatHistoryElement) {
+                chatHistoryElement.innerHTML = gameHistory.map((entry, index) => `
+                    <div class="mb-2 p-2 rounded-md ${entry.type === 'input' ? 'bg-blue-900/30 text-blue-200 self-end ml-auto' : 'bg-green-900/30 text-green-200 self-start mr-auto'} max-w-[90%] break-words">
+                        <span class="font-bold">${entry.type === 'input' ? 'Player: ' : 'CyberLord: '}</span>
+                        ${entry.text}
+                    </div>
+                `).join('');
+
+                if (isTyping) {
+                    chatHistoryElement.innerHTML += `
+                        <div class="mb-2 p-2 rounded-md bg-green-900/30 text-green-200 self-start mr-auto max-w-[90%]">
+                            <span class="font-bold">CyberLord: </span>
+                            <span class="animate-pulse">...</span>
+                        </div>
+                    `;
+                }
+                scrollToBottom();
+            }
+        }
+
+        function setGameInputDisabled(disabled) {
+            document.getElementById('game-input').disabled = disabled;
+            document.getElementById('send-input-button').disabled = disabled;
+            document.getElementById('voice-input-button').disabled = disabled;
+            if (disabled) {
+                document.getElementById('send-input-button').classList.add('opacity-50', 'cursor-not-allowed');
+                document.getElementById('voice-input-button').classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                document.getElementById('send-input-button').classList.remove('opacity-50', 'cursor-not-allowed');
+                document.getElementById('voice-input-button').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        async function handleRestartGame() {
+            updateMessage('Initiating full system reset... erasing all memories...');
+            setGameInputDisabled(true);
+            window.speechSynthesis.cancel(); // Stop any TTS
+
+            // Reset all local states
+            character = null;
+            gameHistory = [];
+            importantLocations = [];
+            importantPeople = [];
+            importantEvents = [];
+            currentScreen = 'characterCreator';
+            characterCreatorState = { // Reset character creator state too
+                name: '', gender: '', raceKey: null, classKey: null,
+                stats: { strength: 0, intelligence: 0, dexterity: 0, charisma: 0, luck: 0, stamina: 0 },
+                description: '', isRolling: false, isGeneratingDescription: false,
+            };
+
+
+            setTimeout(() => {
+                renderCharacterCreator();
+                updateMessage('System rebooted. Welcome back to the character creator.');
+                setGameInputDisabled(false); // Enable input for character creator
+            }, 1500);
+        }
+
+        function handleCopyLog() {
+            const logText = gameHistory.map(entry => {
+                const prefix = entry.type === 'input' ? 'Player: ' : 'CyberLord: ';
+                return prefix + entry.text;
+            }).join('\n');
+
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = logText;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+
+            try {
+                document.execCommand('copy');
+                updateMessage('Gameplay log copied to clipboard!');
+            } catch (err) {
+                console.error('Failed to copy text: ', err);
+                updateMessage('Failed to copy log. Your browser may not support direct clipboard access.', 'red');
+            } finally {
+                document.body.removeChild(tempTextArea);
+            }
+        }
+
+        async function sendToCyberLord(userCommand) {
+            setGameInputDisabled(true); // Disable input while AI is typing
+            updateMessage('CyberLord is thinking...');
+            updateChatHistoryDisplay(true); // Show typing indicator
+            window.speechSynthesis.cancel(); // Stop any ongoing TTS
+
+            const newHistory = [...gameHistory, { type: 'input', text: userCommand }];
+            gameHistory = newHistory; // Update global state
+            updateChatHistoryDisplay(true); // Update with user input and typing indicator
+            // saveGame(); // REMOVED: Automatic save after every user input
+
+
+            // Handle game commands
+            const lowerCaseCommand = userCommand.toLowerCase().trim();
+            if (lowerCaseCommand === '!restart') {
+                await handleRestartGame();
+                return;
+            } else if (lowerCaseCommand === '!save') { // Handle new !SAVE command
+                saveGame();
+                updateMessage('Game saved!', 'success');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!load') { // Handle new !LOAD command
+                currentScreen = 'characterCreator'; // Temporarily go to character creator to show load options
+                renderCharacterCreator();
+                updateMessage('Select a game to load from the "Load or Delete Game" section.', 'info');
+                setGameInputDisabled(false); // Re-enable input for character creator screen
+                return;
+            }
+            else if (lowerCaseCommand === '!locations') {
+                showLocationsModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false); // Hide typing indicator
+                return;
+            } else if (lowerCaseCommand === '!people') {
+                showPeopleModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!commands') {
+                showCommandsModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!districts') {
+                showDistrictsModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!copylog') {
+                handleCopyLog();
+                updateMessage('Gameplay log copied to clipboard!');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!lore') {
+                showLoreModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            } else if (lowerCaseCommand === '!microphonehelp') {
+                showMicrophoneHelpModalFunc();
+                updateMessage('');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            }
+
+            // If character health is 0, only allow !RESTART command
+            if (character && character.health <= 0) {
+                updateMessage("You are defeated. Only the '!RESTART' command will work now.", 'red');
+                setGameInputDisabled(false);
+                updateChatHistoryDisplay(false);
+                return;
+            }
+
+            // =================================================================================================================
+            // AI API call logic (active now)
+            // The API_KEY is expected to be provided by the Canvas environment or explicitly by the user for external hosting.
+            // =================================================================================================================
+
+
+            const prompt = `You are the CyberLord, the Game Master for a futuristic neon sci-fi RPG set in Skylight City. The player character's name is ${character.name}, they are ${character.gender}, a ${races[character.race]?.name} ${classes[character.className]?.name} with these stats: Strength ${character.stats.strength}, Intelligence ${character.stats.intelligence}, Dexterity ${character.stats.dexterity}, Charisma ${character.stats.charisma}, Luck ${character.stats.luck}, Stamina ${character.stats.stamina}.
+            Current Health: ${character.health}, Current Credits: ${character.credits}, Current XP: ${character.xp}.
+            
+            Skylight City Demographics:
+            - Humans: Approximately 60% of the population. They are the most common and can be found in all districts and roles.
+            - MaurKaunn: Approximately 10% of the population. Often found in academic, scientific, tech, or diplomatic roles due to their intellect and agility.
+            - Ursax: Approximately 10% of the population. Known for their strength and resilience, they are frequently found in heavy labor, security, combat sports, or as enforcers.
+            - Tigrax: Approximately 10% of the population. Valued for their agility and luck, they thrive in entertainment, stealth operations, or various underground activities.
+            - PsyBer: Approximately 10% of the population. These sentient AIs are integrated into advanced tech sectors, information networks, or as specialized service units.
+            When describing characters or populating scenes, ensure you represent this racial diversity naturally, adhering to these proportions. Introduce individuals from these races as appropriate to the narrative.
+
+            Here is the game history so far:
+            ${gameHistory.map(entry => `${entry.type === 'input' ? 'Player: ' : 'CyberLord: '}${entry.text}`).join('\n')}
+            Current important locations: ${importantLocations.join(', ') || 'None'}
+            Current important people: ${importantPeople.join(', ') || 'None'}
+            Current important events: ${importantEvents.join(', ') || 'None'}
+
+            The player's command is: '${userCommand}'
+
+            Based on the character's abilities, current stats, health, credits, XP, and the game history, narrate the outcome and evolve the story. Your response MUST be a JSON object with the following structure:
+            {
+            "narrative": "...", // The main story narration for the player
+            "healthChange": "...", // OPTIONAL: Number representing change in health (e.g., -10, +5). Omit if no change.
+            "creditsChange": "...", // OPTIONAL: Number representing change in credits (e.g., +100, -50). Omit if no change.
+            "xpChange": "...", // OPTIONAL: Number representing XP gained (e.g., +25). Omit if no change.
+            "statBonus": { // OPTIONAL: Object if a stat increased. Omit if no stat bonus.
+                "stat": "strength|intelligence|dexterity|charisma|luck|stamina",
+                "amount": 1
+            },
+            "notableMomentsSummary": "...", // OPTIONAL: A ONE PARAGRAPH summary of notable moments if player health drops to 0. Only provide if health becomes 0.
+            "locations": ["...", "..."], // Updated list of important locations
+            "people": ["...", "..."], // Updated list of important people
+            "events": ["...", "..."] // Updated list of important events
+            }
+            Maintain persistence for locations, people, and events. Add new ones if they become relevant, remove old ones if they are no longer important to the story. Keep the lists concise and only include truly *important* elements. Ensure the narrative is engaging and reactive to the player's choices and character's stats. If the player asks about their character, provide relevant details from their description or stats.
+            If health drops to 0 or below, the narrative should reflect death, and the 'notableMomentsSummary' should be provided.
+            `;
+
+            let deathSummary = null;
+
+            try {
+                const chatPayload = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = {
+                    contents: chatPayload,
+                    generationConfig: {
+                        responseMimeType: "application/json",
+                        responseSchema: {
+                            type: "OBJECT",
+                            properties: {
+                                narrative: { type: "STRING" },
+                                healthChange: { type: "NUMBER", nullable: true },
+                                creditsChange: { type: "NUMBER", nullable: true },
+                                xpChange: { type: "NUMBER", nullable: true },
+                                statBonus: {
+                                    type: "OBJECT",
+                                    properties: { stat: { type: "STRING" }, amount: { type: "NUMBER" } },
+                                    nullable: true
+                                },
+                                notableMomentsSummary: { type: "STRING", nullable: true },
+                                locations: { type: "ARRAY", items: { type: "STRING" } },
+                                people: { type: "ARRAY", items: { type: "STRING" } },
+                                events: { type: "ARRAY", items: { type: "STRING" } },
+                            },
+                            required: ["narrative", "locations", "people", "events"]
+                        }
+                    }
+                };
+
+                // Log the API URL being used
+                console.log("Attempting to call API at:", API_URL);
+
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                // Log the raw response status
+                console.log("API Response Status:", response.status);
+
+                const result = await response.json();
+
+                // Log the full result for inspection
+                console.log("Full API Response:", result);
+
+                if (response.ok) { // Check if the HTTP status is OK (2xx)
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const jsonText = result.candidates[0].content.parts[0].text;
+                        const parsedResponse = JSON.parse(jsonText);
+
+                        // Ensure narrative is extracted, default to a message if empty
+                        const cyberLordNarrative = parsedResponse.narrative || "The CyberLord could not craft a detailed story based on your input. Try adjusting your character choices or input.";
+                        gameHistory.push({ type: 'narrative', text: cyberLordNarrative });
+                        speakNarrative(cyberLordNarrative); // Speak the narrative
+
+                        // Apply health, credits, XP changes
+                        if (parsedResponse.healthChange !== undefined) character.health = Math.max(0, character.health + parsedResponse.healthChange);
+                        if (parsedResponse.creditsChange !== undefined) character.credits = Math.max(0, character.credits + parsedResponse.creditsChange);
+                        if (parsedResponse.xpChange !== undefined) character.xp = Math.max(0, character.xp + parsedResponse.xpChange);
+
+                        // Handle stat bonus
+                        if (parsedResponse.statBonus && character.stats[parsedResponse.statBonus.stat] !== undefined) {
+                            const currentStatValue = character.stats[parsedResponse.statBonus.stat];
+                            if (currentStatValue < 20) {
+                                character.stats = {
+                                    ...character.stats,
+                                    [parsedResponse.statBonus.stat]: Math.min(20, currentStatValue + parsedResponse.statBonus.amount)
+                                };
+                                updateMessage(`CyberLord grants a +${parsedResponse.statBonus.amount} bonus to ${parsedResponse.statBonus.stat.charAt(0).toUpperCase() + parsedResponse.statBonus.stat.slice(1)}!`);
+                            }
+                        }
+
+                        // Check for character death
+                        if (character.health <= 0) {
+                            character.health = 0; // Ensure health doesn't go negative in display
+                            deathSummary = parsedResponse.notableMomentsSummary || "Your journey ends here. You fought bravely."; // Ensure summary exists
+                            gameHistory.push({ type: 'narrative', text: "--- GAME OVER ---" });
+                            gameHistory.push({ type: 'narrative', text: "Notable Moments: " + deathSummary });
+                            updateMessage("Game Over: " + deathSummary + "\nType '!RESTART' to begin a new game.", 'red');
+                            setGameInputDisabled(true); // Disable input on death
+                            window.speechSynthesis.cancel(); // Stop TTS on death
+                        }
+
+                        importantLocations = parsedResponse.locations || importantLocations;
+                        importantPeople = parsedResponse.people || importantPeople;
+                        importantEvents = parsedResponse.events || importantEvents;
+
+                        updateCharacterProfileDisplay();
+                        updateChatHistoryDisplay(false); // Hide typing indicator
+                        // saveGame(); // Removed: Automatic save after every AI response (now manual only)
+                    } else {
+                        const errorMessage = 'Failed to generate narrative: No content or unexpected API response structure from AI. Check console for "Full API Response:".';
+                        updateMessage(errorMessage, 'red');
+                        console.error(errorMessage, result);
+                    }
+                } else {
+                    const errorData = result.error ? result.error.message : JSON.stringify(result);
+                    const errorMessage = `Failed to generate narrative: API Error (${response.status} ${response.statusText}): ${errorData}. Check console for "Full API Response:".`;
+                    updateMessage(errorMessage, 'red');
+                    console.error(errorMessage, result);
+                }
+            } catch (error) {
+                const errorMessage = `An network or parsing error occurred during narrative generation: ${error.message}. This might be due to CORS, an invalid URL, or a network issue. Check console for details.`;
+                updateMessage(errorMessage, 'red');
+                console.error("Fetch error during narrative generation:", error);
+            } finally {
+                // Only clear message if it's not a Game Over message
+                if (character && character.health > 0) {
+                    updateMessage('');
+                }
+                setGameInputDisabled(false); // Re-enable input if not game over
+            }
+        }
+
+        function handleSendInput() {
+            const inputElement = document.getElementById('game-input');
+            const currentInput = inputElement.value.trim();
+            if (currentInput) {
+                sendToCyberLord(currentInput);
+                inputElement.value = '';
+            }
+        }
+
+        function toggleVoiceInput() {
+            const voiceButton = document.getElementById('voice-input-button');
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.start();
+            }
+        }
+
+        function setupGameScreenListeners() {
+            const gameInput = document.getElementById('game-input');
+            const sendButton = document.getElementById('send-input-button');
+            const voiceButton = document.getElementById('voice-input-button');
+            const ttsToggle = document.getElementById('tts-toggle');
+            const narrativeVoiceSelect = document.getElementById('narrative-voice-select');
+
+            gameInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSendInput();
+                }
+            });
+            sendButton.addEventListener('click', handleSendInput);
+            voiceButton.addEventListener('click', toggleVoiceInput);
+
+            // TTS Listeners
+            if (ttsToggle) {
+                ttsToggle.addEventListener('change', () => {
+                    ttsEnabled = ttsToggle.checked;
+                    if (!ttsEnabled) {
+                        window.speechSynthesis.cancel(); // Stop speech if TTS is turned off
+                    }
+                });
+            }
+
+            if (narrativeVoiceSelect) {
+                narrativeVoiceSelect.addEventListener('change', (e) => {
+                    const selectedName = e.target.value;
+                    const voice = allVoices.find(v => v.name === selectedName);
+                    if (voice) {
+                        // For simplicity, we'll assign the selected voice to both male/female selectors if they were present
+                        // but here we are just setting the specific narrative voice.
+                        // You could expand this to store user preferences in localStorage for TTS voice.
+                    }
+                });
+            }
+
+
+            // Initialize SpeechRecognition
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = false; // Only listen for one phrase at a time
+                recognition.interimResults = false; // Only return final results
+                recognition.lang = 'en-US';
+
+                recognition.onstart = () => {
+                    isListening = true;
+                    updateMessage('Listening for your command...');
+                    voiceButton.classList.remove('bg-gradient-to-r', 'from-orange-500', 'to-yellow-500', 'hover:from-orange-600', 'hover:to-yellow-600');
+                    voiceButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                    voiceButton.textContent = 'Stop Listening';
+                    setGameInputDisabled(true); // Disable text input while listening
+                    gameInput.placeholder = 'Voice input active...';
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    gameInput.value = transcript;
+                    updateMessage(`Heard: "${transcript}"`);
+                    isListening = false;
+                    voiceButton.classList.add('bg-gradient-to-r', 'from-orange-500', 'to-yellow-500', 'hover:from-orange-600', 'hover:to-yellow-600');
+                    voiceButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    voiceButton.textContent = 'Voice Input';
+                    setGameInputDisabled(false);
+                    gameInput.placeholder = 'Type your command (!COMMANDS for help)...';
+                    handleSendInput(); // Automatically send input after voice recognition
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    if (event.error === 'not-allowed') {
+                        updateMessage('Microphone access denied. Please enable microphone permissions in your browser settings to use voice input. The page may need to be reloaded after changing permissions.', 'red');
+                    } else {
+                        updateMessage(`Voice input error: ${event.error}`, 'red');
+                    }
+                    isListening = false;
+                    voiceButton.classList.add('bg-gradient-to-r', 'from-orange-500', 'to-yellow-500', 'hover:from-orange-600', 'hover:to-yellow-600');
+                    voiceButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    voiceButton.textContent = 'Voice Input';
+                    setGameInputDisabled(false);
+                    gameInput.placeholder = 'Type your command (!COMMANDS for help)...';
+                };
+
+                recognition.onend = () => {
+                    isListening = false;
+                    // Clear message if it's a generic "listening" message
+                    const currentMessage = document.getElementById('game-message').textContent;
+                    if (currentMessage === 'Listening for your command...') {
+                        updateMessage('');
+                    }
+                    voiceButton.classList.add('bg-gradient-to-r', 'from-orange-500', 'to-yellow-500', 'hover:from-orange-600', 'hover:to-yellow-600');
+                    voiceButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                    voiceButton.textContent = 'Voice Input';
+                    setGameInputDisabled(false);
+                    gameInput.placeholder = 'Type your command (!COMMANDS for help)...';
+                };
+            } else {
+                voiceButton.disabled = true;
+                voiceButton.textContent = 'Voice Not Supported';
+                updateMessage('Speech recognition not supported in this browser. Voice input is disabled.', 'red');
+            }
+        }
+
+        // --- Initial Application Setup ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Fill background grid with animated divs
+            const gridContainer = document.querySelector('.grid.grid-cols-10');
+            if (gridContainer) {
+                const numDivs = 20 * 10; // 20 rows, 10-20 cols as per CSS
+                gridContainer.innerHTML = Array(numDivs).fill().map((_, i) =>
+                    `<div class="bg-gradient-to-br from-purple-800 to-blue-800 animate-pulse-grid" style="animation-delay: ${i * 0.05}s;"></div>`
+                ).join('');
+            }
+
+            // Start the character creator
+            renderCharacterCreator();
+
+            // Load TTS voices when voices are ready
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = loadVoices;
+                // If voices are already loaded before the event fires (browser dependent)
+                if (window.speechSynthesis.getVoices().length > 0) {
+                    loadVoices();
+                }
+            } else {
+                console.warn("Web Speech Synthesis API not supported in this browser.");
+            }
+        });
+
+    </script>
+</body>
+</html>
