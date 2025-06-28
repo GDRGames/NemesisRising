@@ -510,23 +510,37 @@
             showCommandsModal = true;
         }
 
-        function showDistrictsModalFunc() {
-            const districts = [
-                { name: 'Arcology Prime (The Spire)', vibe: 'Sterile, luxurious, surveilled.', features: 'The highest and most opulent district. Home to mega-corporations (OmniCorp, GenTech) and the elite. Features automated sky-trams, rooftop gardens, exclusive clubs, and high-end clinics. Access is highly restricted.' },
-                { name: 'Maxonn Tower (Corporate Nexus & Planetary Apex)', vibe: 'Imposing, awe-inspiring, exclusive, secretive.', features: 'The absolute tallest structure on the planet, headquarters of the Maxonn Corporation. Symbol of unparalleled power and technological achievement. Features zero-gravity elevators, exclusive residential floors, corporate archives, high-security data centers, and a private skyport.' },
-                { name: 'Neon Bazaar (Market Sector)', vibe: 'Bustling, sensory overload, dangerous.', features: 'A vibrant, chaotic, and densely packed commercial hub. Anything can be bought or sold, legally or illegally. A maze of glowing stalls, bustling crowds, hidden back alleys, black markets, tech repair shops, street food, entertainment arcades, and underground fighting rings.' },
-                { name: 'The Glitch Arena (Entertainment & Sports Stadium)', vibe: 'Electric, exhilarating, grand.', features: 'A colossal, multi-tiered stadium for hyper-sensory concerts, brutal combat sports, and massive holographic spectacles. A central hub for entertainment with adaptable architecture, retractable roof, combat rings, and luxury skyboxes.' },
-                { name: 'The Gridlock (Residential & Industrial)', vibe: 'Gritty, hardworking, polluted, overlooked.', features: 'A sprawling, mid-level sector with endless traffic jams on multi-layered skyways. Features apartment blocks stacked upon ancient factories, a dense working-class population, repurposed industrial zones, struggling clinics, and local watering holes.' },
-                { name: 'Skyport Omega (International Airport)', vibe: 'Bustling, transient, imposing, heavily secured.', features: 'The city\'s massive international and interstellar transport hub. A marvel of advanced engineering with automated cargo loaders, sleek passenger shuttles, inter-system freighters, vast landing pads, custom inspection checkpoints, and orbital launch bays.' },
-                { name: 'The Maws (Slums District)', vibe: 'Grimy, desperate, resilient, opportunistic.', features: 'A sprawling, densely packed slums district at the fringes of the Gridlock, bordering the toxic Undercity. Characterized by ramshackle dwellings, makeshift markets, labyrinthine alleys, perpetual smog, black market operations (SkrapTek workshops), and hidden info-broker dens.' },
-                { name: 'The Undercity (Forgotten Depths)', vibe: 'Oppressive, dangerous, mysterious, survivalist.', features: 'The true bottom of Skylight City, built upon the ruins of older civilizations. Dark, damp, and often hazardous, home to the desperate, mutated creatures, and forgotten secrets. Features ancient sewers, abandoned research labs, hidden cults, scavenger camps, and toxic waste zones.' },
-                { name: 'The Docks (Shoreside Shipping Hub)', vibe: 'Industrial, bustling, grimy.', features: 'The main shoreside area for cargo shipping and receiving. Dominated by massive cargo warehouses, towering container stacks, and automated loading cranes. A place of constant activity, with ships arriving from across the globe and beyond. Often a hotspot for smuggling and illicit cargo transfers.' },
-                { name: 'Lindfeld Forest (Northern Outskirts)', vibe: 'Serene, natural, potentially wild.', features: 'A vast expanse of regenerated forest on the northern outskirts of Skylight City. While parts are maintained for recreation, deeper sections are wild and untamed, home to unique flora and fauna, and rumored hidden enclaves or forgotten research facilities. Offers a stark contrast to the urban sprawl.' },
-                { name: 'Skylight Central Underground (Subway System)', vibe: 'Efficient, labyrinthine, occasionally dangerous.', features: 'The extensive underground fusion-train subway system that crisscrosses Skylight City. While a vital transportation network, its older, abandoned tunnels and maintenance shafts are a subterranean labyrinth, sometimes home to squatters, rogue AIs, or forgotten secrets. High-speed trains connect all major districts.' },
-                { name: 'VanGaren Mines (Abandoned Copper Mine)', vibe: 'Desolate, dangerous, filled with echoes.', features: 'An abandoned and highly dangerous copper mine located on the far western edge of the city\'s sprawl. Shut down decades ago due to partial collapse and the discovery of unstable subterranean gases. Now, only desperate scavengers or those seeking to hide something dare to venture into its treacherous, echoing shafts. Rumored to contain valuable untouched resources or dark secrets.' },
-                { name: 'Thrunkville (Amusement Park)', vibe: 'Over-the-top, synthetic joy, subtly unsettling.', features: 'A massive, perpetually vibrant amusement park located on the eastern side of the city. Sponsored and owned by "Thrunk," the mega-corporation behind Thrunk Cola, it features dazzling holographic rides, bizarre synthetic mascots, and an endless supply of sugary beverages. Beneath its cheerful facade, corporate surveillance and consumer manipulation are rampant.' }
-            ];
+        // --- NEW GLOBAL LORE DATA ---
+        // This data structure provides content for the !LORE command.
+        const loreData = [
+            {
+                category: "The City States & Factions",
+                sections: [
+                    { title: "Skylight City (Atheria Prime)", content: ["The last bastion of human and allied species, a sprawling neon-drenched arcology built upwards after the 'Great Collapse'. Governed by a corporate-religious council known as The Luminaries, but effectively controlled by mega-corporations. Divided into distinct districts, each with its own character and dangers."] },
+                    { title: "The Luminaries", content: ["The ruling council of Skylight City. Composed of representatives from the major corporations and enigmatic spiritual leaders. They project an image of benevolent governance but are often seen as authoritarian and corrupt."] },
+                    { title: "The Underbelly Networks", content: ["A collective term for the various criminal syndicates, rogue AI factions, and resistance groups operating in the lower districts and Undercity. They are often at odds with The Luminaries but also with each other."] }
+                ]
+            },
+            {
+                category: "Technology & Society",
+                sections: [
+                    { title: "Cybernetics", content: ["Advanced prosthetics and enhancements are commonplace, from basic medical repairs to full-body combat augments. The line between human and machine is increasingly blurred."] },
+                    { title: "Neural Implants & Net-Walking", content: ["Brain-computer interfaces allow direct access to the city's vast data-net, enabling instant information access, virtual reality immersion, and direct control over technology. Net-walking is a dangerous but powerful skill."] },
+                    { title: "Synth-Food & Bio-Engineering", content: ["Much of the population sustains itself on nutrient paste and lab-grown meat. Bio-engineering is advanced, leading to new species (like Ursax and Tigrax) and a constant ethical debate."] }
+                ]
+            },
+            {
+                category: "Historical Context",
+                sections: [
+                    { title: "The Great Collapse", content: ["A cataclysmic event centuries ago that led to widespread environmental devastation, resource depletion, and the near-extinction of humanity. Skylight City was built as a response, a shielded sanctuary from the ravaged world outside."] },
+                    { title: "The First AI Uprising", content: ["An attempt by rogue AIs to seize control of vital city infrastructure decades ago. It was violently suppressed, leading to strict AI control protocols and the creation of 'PsyBers' - controlled AI units."] }
+                ]
+            }
+        ];
 
+        // --- REVISED showLoreModalFunc ---
+        // This function now correctly displays the global loreData.
+        function showLoreModalFunc() {
             let contentHTML = '<div class="space-y-8">';
             loreData.forEach(categoryData => {
                 contentHTML += `<div>
@@ -547,6 +561,43 @@
             renderModal('NEMESIS RISING: Lore Guide', contentHTML, () => { showLoreModal = false; hideModal(); }, 'green-500', 'green-400');
             showLoreModal = true;
         }
+
+
+        // --- NEW showDistrictsModalFunc ---
+        // This function will now correctly display the districts data.
+        function showDistrictsModalFunc() {
+            const districts = [
+                { name: 'Arcology Prime (The Spire)', vibe: 'Sterile, luxurious, surveilled.', features: 'The highest and most opulent district. Home to mega-corporations (OmniCorp, GenTech) and the elite. Features automated sky-trams, rooftop gardens, exclusive clubs, and high-end clinics. Access is highly restricted.' },
+                { name: 'Maxonn Tower (Corporate Nexus & Planetary Apex)', vibe: 'Imposing, awe-inspiring, exclusive, secretive.', features: 'The absolute tallest structure on the planet, headquarters of the Maxonn Corporation. Symbol of unparalleled power and technological achievement. Features zero-gravity elevators, exclusive residential floors, corporate archives, high-security data centers, and a private skyport.' },
+                { name: 'Neon Bazaar (Market Sector)', vibe: 'Bustling, sensory overload, dangerous.', features: 'A vibrant, chaotic, and densely packed commercial hub. Anything can be bought or sold, legally or illegally. A maze of glowing stalls, bustling crowds, hidden back alleys, black markets, tech repair shops, street food, entertainment arcades, and underground fighting rings.' },
+                { name: 'The Glitch Arena (Entertainment & Sports Stadium)', vibe: 'Electric, exhilarating, grand.', features: 'A colossal, multi-tiered stadium for hyper-sensory concerts, brutal combat sports, and massive holographic spectacles. A central hub for entertainment with adaptable architecture, retractable roof, combat rings, and luxury skyboxes.' },
+                { name: 'The Gridlock (Residential & Industrial)', vibe: 'Gritty, hardworking, polluted, overlooked.', features: 'A sprawling, mid-level sector with endless traffic jams on multi-layered skyways. Features apartment blocks stacked upon ancient factories, a dense working-class population, repurposed industrial zones, struggling clinics, and local watering holes.' },
+                { name: 'Skyport Omega (International Airport)', vibe: 'Bustling, transient, imposing, heavily secured.', features: 'The city\'s massive international and interstellar transport hub. A marvel of advanced engineering with automated cargo loaders, sleek passenger shuttles, inter-system freighters, vast landing pads, custom inspection checkpoints, and orbital launch bays.' },
+                { name: 'The Maws (Slums District)', vibe: 'Grimy, desperate, resilient, opportunistic.', features: 'A sprawling, densely packed slums district at the fringes of the Gridlock, bordering the toxic Undercity. Characterized by ramshackle dwellings, makeshift markets, labyrinthine alleys, perpetual smog, black market operations (SkrapTek workshops), and hidden info-broker dens.' },
+                { name: 'The Undercity (Forgotten Depths)', vibe: 'Oppressive, dangerous, mysterious, survivalist.', features: 'The true bottom of Skylight City, built upon the ruins of older civilizations. Dark, damp, and often hazardous, home to the desperate, mutated creatures, and forgotten secrets. Features ancient sewers, abandoned research labs, hidden cults, scavenger camps, and toxic waste zones.' },
+                { name: 'The Docks (Shoreside Shipping Hub)', vibe: 'Industrial, bustling, grimy.', features: 'The main shoreside area for cargo shipping and receiving. Dominated by massive cargo warehouses, towering container stacks, and automated loading cranes. A place of constant activity, with ships arriving from across the globe and beyond. Often a hotspot for smuggling and illicit cargo transfers.' },
+                { name: 'Lindfeld Forest (Northern Outskirts)', vibe: 'Serene, natural, potentially wild.', features: 'A vast expanse of regenerated forest on the northern outskirts of Skylight City. While parts are maintained for recreation, deeper sections are wild and untamed, home to unique flora and fauna, and rumored hidden enclaves or forgotten research facilities. Offers a stark contrast to the urban sprawl.' },
+                { name: 'Skylight Central Underground (Subway System)', vibe: 'Efficient, labyrinthine, occasionally dangerous.', features: 'The extensive underground fusion-train subway system that crisscrosses Skylight City. While a vital transportation network, its older, abandoned tunnels and maintenance shafts are a subterranean labyrinth, sometimes home to squatters, rogue AIs, or forgotten secrets. High-speed trains connect all major districts.' },
+                { name: 'VanGaren Mines (Abandoned Copper Mine)', vibe: 'Desolate, dangerous, filled with echoes.', features: 'An abandoned and highly dangerous copper mine located on the far western edge of the city\'s sprawl. Shut down decades ago due to partial collapse and the discovery of unstable subterranean gases. Now, only desperate scavengers or those seeking to hide something dare to venture into its treacherous, echoing shafts. Rumored to contain valuable untouched resources or dark secrets.' },
+                { name: 'Thrunkville (Amusement Park)', vibe: 'Over-the-top, synthetic joy, subtly unsettling.', features: 'A massive, perpetually vibrant amusement park located on the eastern side of the city. Sponsored and owned by "Thrunk," the mega-corporation behind Thrunk Cola, it features dazzling holographic rides, bizarre synthetic mascots, and an endless supply of sugary beverages. Beneath its cheerful facade, corporate surveillance and consumer manipulation are rampant.' }
+            ];
+
+            let contentHTML = '<div class="space-y-8">';
+            districts.forEach(district => {
+                contentHTML += `
+                    <div class="p-3 bg-gray-800/50 rounded-md border border-gray-700">
+                        <p class="font-bold text-lg text-white mb-2">${district.name}</p>
+                        <p class="text-gray-300 text-sm mb-1"><span class="font-semibold text-purple-300">Vibe:</span> ${district.vibe}</p>
+                        <p class="text-gray-300 text-sm mb-1"><span class="font-semibold text-purple-300">Features:</span> ${district.features}</p>
+                    </div>
+                `;
+            });
+            contentHTML += `</div>`;
+
+            renderModal('Skylight City Districts', contentHTML, () => { showDistrictsModal = false; hideModal(); }, 'blue-500', 'blue-400');
+            showDistrictsModal = true;
+        }
+
 
         function showMicrophoneHelpModalFunc() {
             const content = `<div class="text-gray-300 text-sm space-y-4">
@@ -771,11 +822,11 @@
             const startGameButton = document.getElementById('start-game-button');
 
             const canGenerate = characterCreatorState.name.trim() &&
-                                 characterCreatorState.gender &&
-                                 characterCreatorState.raceKey &&
-                                 characterCreatorState.classKey &&
-                                 Object.values(characterCreatorState.stats).every(s => s > 0) &&
-                                 !characterCreatorState.isGeneratingDescription;
+                                     characterCreatorState.gender &&
+                                     characterCreatorState.raceKey &&
+                                     characterCreatorState.classKey &&
+                                     Object.values(characterCreatorState.stats).every(s => s > 0) &&
+                                     !characterCreatorState.isGeneratingDescription;
 
             if (Object.values(characterCreatorState.stats).every(s => s > 0)) {
                 descriptionSection.style.display = 'block';
@@ -880,11 +931,11 @@
                                     locations: { type: "ARRAY", items: { type: "STRING" } },
                                     people: { type: "ARRAY", items: { type: "STRING" } },
                                     events: { type: "ARRAY", items: { type: "STRING" } },
-                            },
-                            required: ["narrative", "locations", "people", "events"]
+                                },
+                                required: ["narrative", "locations", "people", "events"]
+                            }
                         }
-                    }
-                };
+                    };
 
                     // Log the API URL being used
                     console.log("Attempting to call API at:", API_URL);
@@ -1134,7 +1185,10 @@
             // Load and populate TTS voices after elements are in DOM
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.onvoiceschanged = loadVoices;
-                loadVoices(); // Call initially in case voices are already loaded
+                // Call initially in case voices are already loaded
+                if (window.speechSynthesis.getVoices().length > 0) {
+                    loadVoices();
+                }
             }
         }
 
@@ -1650,3 +1704,4 @@
     </script>
 </body>
 </html>
+
